@@ -3,7 +3,8 @@ package com.ge.processes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -14,11 +15,12 @@ public class WorkerController {
 
     Logger logger = LoggerFactory.getLogger(WorkerController.class);
 
-    @GetMapping("/work")
+    @PostMapping("/work")
     @ResponseStatus(HttpStatus.OK)
-    public void doSomeWork() {
+    public void doSomeWork(@RequestBody String body) {
         long threadId = Thread.currentThread().getId();
         logger.info("Now doing some work for {}ms - thread id: {}", WORK_DURATION_MS, threadId);
+        logger.info("Body is {}", body);
         try {
             Thread.sleep(WORK_DURATION_MS);
         } catch (InterruptedException e) {
