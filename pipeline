@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-#!/usr/bin/env bash
-
 bucket_name="twelve-factor-app-service-staging"
 package_name="twelve-factor-processes.zip"
 stack_name="twelve-factor-worker-app-stack"
@@ -16,6 +14,10 @@ rm -rf "$package_name"
 zip -j "$package_name" build/libs/*.jar
 
 # stage it
+echo "Creating staging bucket if necessary"
+[ "$(aws s3api head-bucket --bucket $bucket_name 2>&1 > /dev/null)" ] \
+  && (aws s3api create-bucket --bucket "$bucket_name" --region eu-central-1 \
+  --create-bucket-configuration LocationConstraint=eu-central-1)
 echo "Staging to $bucket_name"
 aws s3 cp "$package_name" "s3://$bucket_name"
 
@@ -27,7 +29,8 @@ aws cloudformation deploy \
   --template-file worker-app.yml \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
-      PackageName="$package_name"
+      PackageName="$package_name" \
+      BucketName="$bucket_name"
 
 sqs_url=$(aws cloudformation describe-stacks \
   --stack-name "$stack_name" \

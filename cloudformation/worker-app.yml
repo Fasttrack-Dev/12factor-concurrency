@@ -3,6 +3,8 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   PackageName:
     Type: String
+  BucketName:
+    Type: String
 
 Resources:
 
@@ -37,7 +39,7 @@ Resources:
       ApplicationName: !Ref TwelveFactorWorkerApplication
       Description: "Latest application version"
       SourceBundle:
-        S3Bucket: twelve-factor-app-service-staging
+        S3Bucket: !Ref BucketName
         S3Key: !Ref PackageName
 
   TwelveFactorWorkerEnvironment:
