@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  PackageName:
+    Type: String
+
+Resources:
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: twelve-factor-deadletter-queue
+
+  WorkerQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: twelve-factor-worker-queue
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt [ DeadLetterQueue, Arn ]
+        maxReceiveCount: 5
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - "aws-elasticbeanstalk-ec2-role"
+
+  TwelveFactorWorkerApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: 12factor-worker-app
+      Description: Demo worker application for processes factor
+
+  ApplicationVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    Properties:
+      ApplicationName: !Ref TwelveFactorWorkerApplication
+      Description: "Latest application version"
+      SourceBundle:
+        S3Bucket: twelve-factor-app-service-staging
+        S3Key: !Ref PackageName
+
+  TwelveFactorWorkerEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref TwelveFactorWorkerApplication
+      Description: Worker environment for demo application
+      EnvironmentName: twelve-factor-worker-environment
+      OptionSettings:
+        - Namespace: "aws:elasticbeanstalk:sqsd"
+          OptionName: "WorkerQueueURL"
+          Value: !Ref WorkerQueue
+        - Namespace: "aws:elasticbeanstalk:sqsd"
+          OptionName: "HttpPath"
+          Value: "/work"
+        - Namespace: 'aws:autoscaling:launchconfiguration'
+          OptionName: IamInstanceProfile
+          Value: !Ref InstanceProfile
+        - Namespace: 'aws:autoscaling:launchconfiguration'
+          OptionName: InstanceType
+          Value: "t3.micro"
+        - Namespace: "aws:elasticbeanstalk:application:environment"
+          OptionName: "SERVER_PORT"
+          Value: "5000"
+      SolutionStackName: "64bit Amazon Linux 2 v3.1.4 running Corretto 8"
+      VersionLabel: !Ref ApplicationVersion
+      Tier:
+        Name: "Worker"
+        Type: "SQS/HTTP"
+
+Outputs:
+  WorkerQueueUrl:
+    Value: !Ref WorkerQueue

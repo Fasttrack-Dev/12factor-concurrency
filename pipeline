@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+#!/usr/bin/env bash
+
+bucket_name="twelve-factor-app-service-staging"
+package_name="twelve-factor-processes.zip"
+stack_name="twelve-factor-worker-app-stack"
+
+# build the application binary
+echo "Building binary"
+./gradlew build
+
+# package it
+echo "Packaging binary and extensions"
+rm -rf "$package_name"
+zip -j "$package_name" build/libs/*.jar
+
+# stage it
+echo "Staging to $bucket_name"
+aws s3 cp "$package_name" "s3://$bucket_name"
+
+# spin up / refresh environment
+cd cloudformation
+
+aws cloudformation deploy \
+  --stack-name "$stack_name" \
+  --template-file worker-app.yml \
+  --capabilities CAPABILITY_IAM \
+  --parameter-overrides \
+      PackageName="$package_name"
+
+sqs_url=$(aws cloudformation describe-stacks \
+  --stack-name "$stack_name" \
+  --query "Stacks[0].Outputs[? OutputKey=='WorkerQueueUrl'].OutputValue" \
+  --output text)
+
+echo "Done."
+echo "To test, send messages to the worker queue:"
+echo "aws sqs send-message --queue-url $sqs_url --message-body 'Some message body'"
+echo
+echo "To verify, request and retrieve the enrivonment logs:"
+echo "aws elasticbeanstalk request-environment-info --environment-name twelve-factor-worker-environment --info-type tail"
+echo "aws elasticbeanstalk retrieve-environment-info --environment-name twelve-factor-worker-environment --info-type tail"
