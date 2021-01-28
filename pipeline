@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 bucket_name="twelve-factor-app-service-staging"
-package_name="twelve-factor-processes.zip"
+package_name="twelve-factor-worker-app.zip"
 stack_name="twelve-factor-worker-app-stack"
 
 # build the application binary

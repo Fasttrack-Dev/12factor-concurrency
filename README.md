@@ -1,4 +1,4 @@
-## Processes example
+## Worker processes example
 This is a simple CloudFormation example to showcase how to
 setup worker processes using AWS Elastic Beanstalk.
 
