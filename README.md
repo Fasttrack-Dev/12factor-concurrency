@@ -7,7 +7,7 @@ Simply run the `pipline` script. It will build the application and
 deploy it to the worker environment which is setup beforehand, if
 necessary. It will also show you how to test the environment.
 
-### See it Action 
+### See it in action 
 
 To test, send messages to the worker queue:
 ```sh
