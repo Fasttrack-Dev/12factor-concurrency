@@ -1,9 +1,33 @@
 #!/usr/bin/env bash
 
-bucket_name="twelve-factor-app-service-staging"
+bucket_name="twelve-factor-app-service-staging-1"
 package_name="twelve-factor-worker-app.zip"
 stack_name="twelve-factor-worker-app-stack"
+aws_region=$(aws configure get region)
 
+function getBucketRegion {
+  echo $(aws s3api get-bucket-location --bucket ${1} | jq .LocationConstraint | tr -d '"')
+}
+# args (bucketname, region)
+function prepareBucket {
+  echo "Creating staging bucket if necessary"
+  if [ "$(aws s3api head-bucket --bucket $1 2>&1 > /dev/null | echo $?)" == 0 ]
+  then
+    bucket_region=$(getBucketRegion ${1})
+    if [ ${bucket_region} != ${2} ]
+    then
+      echo "Error: the bucket already exist, but in the other region then you have configured."
+      echo "The bucket is exist in the Region: ${bucket_region} !"
+      exit 1
+    fi
+  else
+    echo "Info: the bucket does not exist, but will be created in your configured region."
+    aws s3api create-bucket --bucket "$1" --region ${2} --create-bucket-configuration LocationConstraint=${2}
+  fi
+}
+
+# main
+echo "The Stack will deployed in Region: [${aws_region}]"
 # build the application binary
 echo "Building binary"
 ./gradlew build
@@ -14,10 +38,8 @@ rm -rf "$package_name"
 zip -j "$package_name" build/libs/*.jar
 
 # stage it
-echo "Creating staging bucket if necessary"
-[ "$(aws s3api head-bucket --bucket $bucket_name 2>&1 > /dev/null)" ] \
-  && (aws s3api create-bucket --bucket "$bucket_name" --region eu-central-1 \
-  --create-bucket-configuration LocationConstraint=eu-central-1)
+
+prepareBucket $bucket_name $aws_region
 echo "Staging to $bucket_name"
 aws s3 cp "$package_name" "s3://$bucket_name"
 
