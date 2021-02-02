@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+stack_name="twelve-factor-worker-app-stack"
+
+echo "Deleting stack $stack_name..."
+aws cloudformation delete-stack --stack-name "$stack_name"
