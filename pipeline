@@ -5,29 +5,27 @@ package_name="twelve-factor-worker-app-$(uuidgen).zip"
 stack_name="twelve-factor-worker-app-stack"
 aws_region=$(aws configure get region)
 
-function getBucketRegion {
-  echo $(aws s3api get-bucket-location --bucket ${1} | jq .LocationConstraint | tr -d '"')
-}
-# args (bucketname, region)
+# args (bucket-name, region)
 function prepareBucket {
   echo "Creating staging bucket if necessary"
-  if [ "$(aws s3api head-bucket --bucket $1 2>&1 > /dev/null | echo $?)" == 0 ]
+  if [ -z "$(aws s3api head-bucket --bucket "$1" 2>&1)" ]
   then
-    bucket_region=$(getBucketRegion ${1})
-    if [ ${bucket_region} != ${2} ]
+    echo "bucket exists, verifying region..."
+    bucket_region=$(aws s3api get-bucket-location --bucket "$1" | jq .LocationConstraint | tr -d '"')
+    if [ "$bucket_region" != "$2" ]
     then
-      echo "Error: the bucket already exist, but in the other region then you have configured."
-      echo "The bucket is exist in the Region: ${bucket_region} !"
+      echo "Error: The staging bucket '$1' already exists in region $bucket_region"
       exit 1
     fi
   else
-    echo "Info: the bucket does not exist, but will be created in your configured region."
-    aws s3api create-bucket --bucket "$1" --region ${2} --create-bucket-configuration LocationConstraint=${2}
+    echo "Info: The staging bucket does not yet exist and will be created in your configured region $aws_region"
+    aws s3api create-bucket --bucket "$1" --region "$2" --create-bucket-configuration LocationConstraint="$2"
   fi
 }
 
 # main
-echo "The Stack will deployed in Region: [${aws_region}]"
+echo "The stack will deployed in region $aws_region"
+
 # build the application binary
 echo "Building binary"
 ./gradlew build
@@ -38,17 +36,15 @@ rm -rf "$package_name"
 zip -j "$package_name" build/libs/*.jar
 
 # stage it
+prepareBucket "$bucket_name" "$aws_region"
 
-prepareBucket $bucket_name $aws_region
 echo "Staging to $bucket_name"
 aws s3 cp "$package_name" "s3://$bucket_name"
 
 # spin up / refresh environment
-cd cloudformation
-
 aws cloudformation deploy \
   --stack-name "$stack_name" \
-  --template-file worker-app.yml \
+  --template-file cloudformation/worker-app.yml \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
       PackageName="$package_name" \
@@ -59,7 +55,6 @@ sqs_url=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[? OutputKey=='WorkerQueueUrl'].OutputValue" \
   --output text)
 
-cd ..
 echo "Remove staging"
 aws s3 rm s3://"$bucket_name"/"$package_name"
 rm "$package_name"
@@ -68,6 +63,6 @@ echo "Done."
 echo "To test, send messages to the worker queue:"
 echo "aws sqs send-message --queue-url $sqs_url --message-body 'Some message body'"
 echo
-echo "To verify, request and retrieve the enrivonment logs:"
+echo "To verify, request and retrieve the environment logs:"
 echo "aws elasticbeanstalk request-environment-info --environment-name twelve-factor-worker-environment --info-type tail"
 echo "aws elasticbeanstalk retrieve-environment-info --environment-name twelve-factor-worker-environment --info-type tail"
