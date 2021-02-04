@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 bucket_name="twelve-factor-app-service-staging"
-package_name="twelve-factor-worker-app.zip"
+package_name="twelve-factor-worker-app-$(uuidgen).zip"
 stack_name="twelve-factor-worker-app-stack"
 aws_region=$(aws configure get region)
 
@@ -58,6 +58,11 @@ sqs_url=$(aws cloudformation describe-stacks \
   --stack-name "$stack_name" \
   --query "Stacks[0].Outputs[? OutputKey=='WorkerQueueUrl'].OutputValue" \
   --output text)
+
+cd ..
+echo "Remove staging"
+aws s3 rm s3://"$bucket_name"/"$package_name"
+rm "$package_name"
 
 echo "Done."
 echo "To test, send messages to the worker queue:"
