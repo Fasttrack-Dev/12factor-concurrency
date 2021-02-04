@@ -31,13 +31,12 @@ echo "Building binary"
 ./gradlew build
 
 # package it
-echo "Packaging binary and extensions"
+echo "Packaging binary"
 rm -rf "$package_name"
 zip -j "$package_name" build/libs/*.jar
 
 # stage it
 prepareBucket "$bucket_name" "$aws_region"
-
 echo "Staging to $bucket_name"
 aws s3 cp "$package_name" "s3://$bucket_name"
 
