@@ -11,10 +11,10 @@ necessary. It will also show you how to test the environment.
 
 To test, send messages to the worker queue:
 ```sh
-$ aws sqs send-message --queue-url https://sqs.eu-west-1.amazonaws.com/652129918095/twelve-factor-worker-queue --message-body 'Some message body'
+$ aws sqs send-message --queue-url https://sqs.REGION.amazonaws.com/ACCOUNT/twelve-factor-worker-queue --message-body 'Some message body'
 ```
 
-Verify, the worker setup with request and retrieve the enrivonment logs.<br>
+Verify, the worker setup with request and retrieve the environment logs.<br>
 The following command requests logs from an environment named `twelve-factor-worker-environment`
 ```sh
 $ aws elasticbeanstalk request-environment-info --environment-name twelve-factor-worker-environment --info-type tail
@@ -23,7 +23,7 @@ After requesting logs, retrieve their location with
 ```sh
 $ aws elasticbeanstalk retrieve-environment-info --environment-name twelve-factor-worker-environment --info-type tail
 ```
-Now open the logs with the browser and you should find the follwing sections.
+Now open the logs with the browser and you should find the following sections.
 ```console
 ----------------------------------------
 /var/log/web.stdout.log
